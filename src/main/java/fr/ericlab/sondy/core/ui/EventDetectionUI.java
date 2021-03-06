@@ -16,11 +16,17 @@
  */
 package main.java.fr.ericlab.sondy.core.ui;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.nio.file.Paths;
 import java.time.Instant;
 import java.util.Date;
 import main.java.fr.ericlab.sondy.algo.eventdetection.EventDetectionMethod;
 import main.java.fr.ericlab.sondy.core.app.AppParameters;
 import main.java.fr.ericlab.sondy.core.app.Main;
+import main.java.fr.ericlab.sondy.core.structures.Corpus;
 import main.java.fr.ericlab.sondy.core.structures.Event;
 import main.java.fr.ericlab.sondy.core.structures.Events;
 import main.java.fr.ericlab.sondy.algo.Parameter;
@@ -83,6 +89,7 @@ import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 import main.java.fr.ericlab.sondy.core.structures.Message;
+import org.apache.commons.io.FileUtils;
 import org.reflections.Reflections;
 
 /**
@@ -172,7 +179,7 @@ public class EventDetectionUI {
                 }
             };
         filterEventsField.setOnKeyReleased(enterPressed);
-        detectedEventsRIGHT.getChildren().addAll(filterEventsField,eventTable,createTimelineButton());
+        detectedEventsRIGHT.getChildren().addAll(filterEventsField,eventTable,createTimelineButton(),createSaveButton());
         detectedEventsBOTH.getChildren().addAll(frequencyChart,detectedEventsRIGHT);
         grid.add(detectedEventsBOTH,0,5);
         rectangleSelection = new Rectangle(0,240);
@@ -221,7 +228,7 @@ public class EventDetectionUI {
     public final void initializeEventTable(){
         eventTable = new TableView<>();
         eventTable.setItems(eventList.observableList);
-        UIUtils.setSize(eventTable, Main.columnWidthRIGHT, 247);
+        UIUtils.setSize(eventTable, Main.columnWidthRIGHT, 247 - 28);
         TableColumn textualDescription = new TableColumn("Textual desc.");
         textualDescription.setMinWidth(Main.columnWidthRIGHT/2);
         TableColumn temporalDescription = new TableColumn("Temporal desc.");
@@ -290,6 +297,15 @@ public class EventDetectionUI {
         UIUtils.setSize(button,Main.columnWidthRIGHT,24);
         button.setOnAction((ActionEvent ae) -> {
             createTimelineStage();
+        });
+        return button;
+    }
+
+    public final Button createSaveButton(){
+        Button button = new Button("Save events");
+        UIUtils.setSize(button,Main.columnWidthRIGHT,24);
+        button.setOnAction((ActionEvent ae) -> {
+            saveEventData();
         });
         return button;
     }
@@ -411,6 +427,40 @@ public class EventDetectionUI {
         scene.getStylesheets().add("resources/fr/ericlab/sondy/css/GlobalStyle.css");
         stage.setScene(scene);
         stage.show();
+    }
+
+    // TODO Move this method somewhere else; it's not UI code
+    public void saveEventData(){
+        // Get path to the event directory
+        java.nio.file.Path eventDirPath = Paths.get(AppParameters.dataset.path + File.separator + AppParameters.dataset.corpus.preprocessing + File.separator + "events");
+        eventDirPath.normalize();
+        File dir = eventDirPath.toFile();
+        try {
+            // Make sure directory is created
+            if(!dir.exists()) {
+                dir.mkdir();
+            }
+            int eventNum = 0;
+            // For each event detected
+            for (Event event : selectedMethod.events.observableList) {
+                // Create a file for that event
+                eventNum++;
+                File fileEvent = new File(eventDirPath + File.separator + "event" + eventNum + ".txt");
+                if (!fileEvent.exists()) {
+                    FileUtils.write(fileEvent, "");
+                }
+                // Create a writer for that event
+                BufferedWriter bwEvent = new BufferedWriter(new FileWriter(fileEvent, true));
+                // For each message in the event
+                for (Message message : AppParameters.dataset.corpus.getMessages(event)) {
+                    // Write that message ID to the file
+                    bwEvent.write(message.id.get() + "\n");
+                }
+                bwEvent.close();
+            }
+        } catch (IOException ex) {
+            Logger.getLogger(Corpus.class.getName()).log(Level.SEVERE, null, ex);
+        }
     }
     
     public void createTimelineStage(){
