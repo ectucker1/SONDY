@@ -27,11 +27,13 @@ public class Message {
     public SimpleStringProperty author;
     public SimpleStringProperty time;
     public SimpleStringProperty text;
+    public SimpleStringProperty id;
 
-    public Message(String a, String ti, String te){
+    public Message(String a, String ti, String te, String tid){
         author = new SimpleStringProperty(a);
         time = new SimpleStringProperty(ti);
         text = new SimpleStringProperty(te);
+        id = new SimpleStringProperty(tid);
     }
     
     public String getAuthor(){
@@ -44,5 +46,9 @@ public class Message {
     
     public String getText(){
         return text.get();
+    }
+
+    public String getId() {
+        return id.get();
     }
 }

@@ -121,11 +121,11 @@ public class Corpus {
             String line;
             String firstLine = bufferedReader.readLine();
             String[] components = splitString(firstLine);
-            while (components.length != 3 && (firstLine = bufferedReader.readLine()) != null) {
+            while (components.length != 4 && (firstLine = bufferedReader.readLine()) != null) {
                 components = splitString(firstLine);
                 skippedLineCount++;
             }
-            if (components.length == 3) {
+            if (components.length == 4) {
                 authors.add(components[0]);
                 Date parsedDate = dateFormat.parse(components[1]);
                 minDate = maxDate = parsedDate;
@@ -136,7 +136,7 @@ public class Corpus {
                 bufferedWriter.newLine();
                 while ((line = bufferedReader.readLine()) != null) {
                     components = splitString(line);
-                    if (components.length == 3) {
+                    if (components.length == 4) {
                             authors.add(components[0]);
                             parsedDate = dateFormat.parse(components[1]);
                             if (parsedDate.before(minDate)) {
@@ -193,7 +193,7 @@ public class Corpus {
                 if(text.contains("@")){
                     lemmatizedText += " @";
                 }
-                bwLemmatizedFile.write(components[0]+"\t"+components[1]+"\t"+lemmatizedText+"\n");
+                bwLemmatizedFile.write(components[0]+"\t"+components[1]+"\t"+lemmatizedText+"\t"+components[3]+"\n");
             }
             bwLemmatizedFile.close();
         } catch (IOException ex) {
@@ -217,7 +217,7 @@ public class Corpus {
             try {
                 dir.mkdir();
                 BufferedReader bufferedReader = new BufferedReader(new FileReader(sourceFile));
-                BufferedWriter bwText = null, bwTime = null, bwAuthor = null;
+                BufferedWriter bwText = null, bwTime = null, bwAuthor = null, bwId = null;
                 SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
                 long startTime = start.getTime();
                 NumberFormat formatter = new DecimalFormat("00000000");
@@ -254,6 +254,14 @@ public class Corpus {
                             FileUtils.write(fileAuthor, "");
                         }
                         bwAuthor = new BufferedWriter(new FileWriter(fileAuthor, true));
+                        if (bwId != null) {
+                            bwId.close();
+                        }
+                        File fileId = new File(preprocessPath + File.separator + formatter.format(timeSlice) + ".id");
+                        if (!fileId.exists()) {
+                            FileUtils.write(fileId, "");
+                        }
+                        bwId = new BufferedWriter(new FileWriter(fileId, true));
                     }
                     String text = components[2];
                     if (!stemming.equals("disabled")) {
@@ -306,10 +314,13 @@ public class Corpus {
                     bwTime.newLine();
                     bwAuthor.write(components[0]);
                     bwAuthor.newLine();
+                    bwId.write(components[3]);
+                    bwId.newLine();
                 }
                 bwText.close();
                 bwTime.close();
                 bwAuthor.close();
+                bwId.close();
                 bufferedReader.close();
                 GlobalIndexer indexer = new GlobalIndexer(Configuration.numberOfCores, false);
                 indexer.index(preprocessPath.toString());
@@ -414,15 +425,18 @@ public class Corpus {
                 File textFile = new File(path+File.separator+preprocessing+File.separator+formatter.format(i)+".text");
                 File timeFile = new File(path+File.separator+preprocessing+File.separator+formatter.format(i)+".time");
                 File authorFile = new File(path+File.separator+preprocessing+File.separator+formatter.format(i)+".author");
+                File idFile = new File(path+File.separator+preprocessing+File.separator+formatter.format(i)+".id");
                 LineIterator textIter = FileUtils.lineIterator(textFile);
                 LineIterator timeIter = FileUtils.lineIterator(timeFile);
                 LineIterator authorIter = FileUtils.lineIterator(authorFile);
+                LineIterator idIter = FileUtils.lineIterator(idFile);
                 while(textIter.hasNext()){
                     String text = textIter.nextLine();
                     String author = authorIter.nextLine();
                     String time = timeIter.nextLine();
+                    String id = idIter.nextLine();
                     if(StringUtils.containsIgnoreCase(text,term)){
-                        messages.add(new Message(author,time,text));
+                        messages.add(new Message(author,time,text,id));
                     }
                 }
             } catch (IOException ex) {
@@ -444,9 +458,11 @@ public class Corpus {
                 File textFile = new File(path+File.separator+preprocessing+File.separator+formatter.format(i)+".text");
                 File timeFile = new File(path+File.separator+preprocessing+File.separator+formatter.format(i)+".time");
                 File authorFile = new File(path+File.separator+preprocessing+File.separator+formatter.format(i)+".author");
+                File idFile = new File(path+File.separator+preprocessing+File.separator+formatter.format(i)+".id");
                 LineIterator textIter = FileUtils.lineIterator(textFile);
                 LineIterator timeIter = FileUtils.lineIterator(timeFile);
                 LineIterator authorIter = FileUtils.lineIterator(authorFile);
+                LineIterator idIter = FileUtils.lineIterator(idFile);
                 while(textIter.hasNext()){
                     String text = textIter.nextLine();
                     short[] test = new short[words.length];
@@ -461,11 +477,12 @@ public class Corpus {
                         int testSum = ArrayUtils.sum(test, 0, test.length-1);
                         String author = authorIter.nextLine();
                         String time = timeIter.nextLine();
+                        String id = idIter.nextLine();
                         if(operator==0 && testSum == test.length){
-                            messages.add(new Message(author,time,text));
+                            messages.add(new Message(author,time,text,id));
                         }
                         if(operator==1 && testSum > 0){
-                            messages.add(new Message(author,time,text));
+                            messages.add(new Message(author,time,text,id));
                         }
                     }
                 }
@@ -485,7 +502,7 @@ public class Corpus {
                 String line = lineIterator.nextLine();
                 String[] components = splitString(line);
                 if(components[0].equals(user)){
-                    messages.add(new Message(components[0],components[1],components[2]));
+                    messages.add(new Message(components[0],components[1],components[2],components[3]));
                 }
             }
             return messages;
